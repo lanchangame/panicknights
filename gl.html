@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>PANICKNIGHTS</title>
+    <style>
+        :root { --accent: #2c3e50; --panic-red: #ff4757; --panic-blue: #00d4ff; --gold-sub: #d4af37; --bg-night: #1a0f0a; --text-color: #f5f5f5; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { margin: 0; padding: 0; background-color: #0a0805; font-family: "Helvetica Neue", Arial, sans-serif; color: var(--text-color); display: flex; justify-content: center; align-items: flex-start; height: 100vh; height: 100dvh; overflow-y: auto; overflow-x: hidden; touch-action: manipulation; }
+        #game-container { width: 100vw; min-height: 100vh; min-height: 100dvh; max-width: 480px; background: #ffffff; position: relative; display: flex; flex-direction: column; padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); transition: background 1.5s ease; overflow-y: auto; overflow-x: hidden; }
+        
+        #start-screen, .screen, #panic-overlay, #ura-dark-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+        
+        #start-screen { z-index: 1000; display: flex; flex-direction: column; justify-content: flex-start; align-items: center; padding: 30px 25px 20px; text-align: center; background: #ffffff; color: #333; overflow-y: auto; transition: background 0.8s ease; }
+        #sub-title { margin: 0; padding: 0; line-height: 1.5; }
+        #start-screen.dark-mode { background: #fff5e6; }
+        .start-badge-container { display: flex; gap: 10px; margin-top: 20px; margin-bottom: 10px; flex-wrap: wrap; justify-content: center; }
+        .start-badge { width: 42px; height: 42px; border-radius: 50%; background: #f0f0f0; border: 1px solid #ddd; display: flex; justify-content: center; align-items: center; cursor: pointer; transition: 0.3s; font-size: 18px; color: #ccc; }
+        .start-badge.active { background: #222; border-color: #222; color: #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        
+        #ura-badges .start-badge.active { background: #6c5ce7; border-color: #6c5ce7; box-shadow: 0 4px 12px rgba(108, 92, 231, 0.4); }
+
+        .screen { z-index: 1000; display: flex; flex-direction: column; justify-content: flex-start; align-items: center; padding: 30px; text-align: left; background: rgba(10, 8, 5, 0.98); padding-top: calc(40px + env(safe-area-inset-top)); overflow-y: auto; }
+        .title-box { width: 100%; max-width: 320px; margin-bottom: 10px; }
+        #title-img { width: 100%; height: auto; border-radius: 2px; }
+        .hud { position: absolute; top: calc(20px + env(safe-area-inset-top)); width: 90%; left: 5%; display: flex; flex-direction: column; gap: 10px; z-index: 500; }
+        .gauge-row { display: flex; justify-content: space-between; align-items: center; }
+        .gauge-label { font-size: 0.65rem; letter-spacing: 0.1rem; color: #888; font-weight: bold; }
+        .gauge-bg { width: 120px; height: 3px; background: rgba(255,255,255,0.1); border-radius: 1px; overflow: hidden; }
+        #love-bar { height: 100%; width: 0%; background: #ff4757; transition: 0.5s; }
+        #anxiety-bar { height: 100%; width: 0%; background: #00d4ff; transition: 0.5s; }
+        #timer-container { position: absolute; top: 0; left: 0; width: 100%; height: 5px; background: rgba(255,255,255,0.1); display: none; z-index: 1000; }
+        #timer-bar { width: 100%; height: 100%; background: var(--panic-red); }
+        #panic-overlay { z-index: 400; pointer-events: none; transition: backdrop-filter 0.5s, -webkit-backdrop-filter 0.5s, background 0.5s; }
+        #ura-dark-overlay { z-index: 350; pointer-events: none; transition: background 0.3s; }
+        #stage { position: absolute; top: calc(50px + env(safe-area-inset-top)); left: 0; width: 100%; display: flex; justify-content: center; align-items: center; z-index: 5; transition: opacity 0.5s, top 0.5s; pointer-events: none; }
+        body.ura-mode #stage { top: calc(80px + env(safe-area-inset-top)); }
+        #fire-wrapper { pointer-events: auto; transition: transform 0.3s, opacity 0.3s; }
+        #fire-animation { font-size: 80px; animation: flicker 0.4s infinite alternate; filter: drop-shadow(0 0 15px #d35400); transition: font-size 0.5s; }
+        body.ura-mode #fire-animation { font-size: 150px; }
+        @keyframes flicker { 0% { transform: scale(1); } 100% { transform: scale(1.05); } }
+        #msg-window { min-height: 110px; height: auto; background: rgba(20, 15, 12, 0.95); padding: 15px 20px; box-sizing: border-box; position: absolute; width: 92%; left: 4%; z-index: 700; cursor: pointer; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; user-select: none; display: flex; flex-direction: column; justify-content: center; transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
+        #msg-window.is-monologue { bottom: 30px; top: auto; }
+        #msg-window.is-question { top: calc(230px + env(safe-area-inset-top)); bottom: auto; }
+        
+        body.ura-mode #msg-window.is-question { top: calc(290px + env(safe-area-inset-top)); }
+        body.ura-mode #choice-container { top: calc(430px + env(safe-area-inset-top)); }
+        
+        #name-tag { color: var(--gold-sub); font-weight: bold; margin-bottom: 5px; font-size: 0.9rem; }
+        #text-content { line-height: 1.5; font-size: 0.88rem; color: #ccc; word-break: break-all; }
+        #choice-container { display: none; background: transparent; z-index: 800; position: absolute; top: calc(370px + env(safe-area-inset-top)); bottom: 20px; width: 100%; flex-direction: column; justify-content: center; align-items: center; gap: 8px; overflow: hidden; transition: top 0.5s; }
+        .choice-btn { width: 85%; padding: 12px 15px; background: #222; color: #fff; border: 1px solid #333; border-radius: 2px; font-size: 0.85rem; text-align: left; cursor: pointer; transition: top 1.2s cubic-bezier(0.45, 0.05, 0.55, 0.95), left 1.2s cubic-bezier(0.45, 0.05, 0.55, 0.95), background 0.2s; min-height: 44px; line-height: 1.4; box-shadow: 0 4px 15px rgba(0,0,0,0.5); position: relative; top: auto; left: auto; }
+        .shaking { animation: mini-shake 0.1s infinite; }
+        @keyframes mini-shake { 0%, 100% { transform: translate(0,0); } 50% { transform: translate(1px, -1px); } }
+        .panic-flash { animation: panic-color 0.4s infinite; }
+        @keyframes panic-color { 0%, 100% { border-color: #ff4757; box-shadow: 0 0 15px #ff4757; } 20% { border-color: #eccc68; box-shadow: 0 0 15px #eccc68; } 40% { border-color: #2ed573; box-shadow: 0 0 15px #2ed573; } 60% { border-color: #1e90ff; box-shadow: 0 0 15px #1e90ff; } 80% { border-color: #9b59b6; box-shadow: 0 0 15px #9b59b6; } }
+        .system-btn { background: #222; color: #fff; border: none; padding: 12px 40px; font-weight: bold; cursor: pointer; margin-top: 10px; font-size: 0.85rem; letter-spacing: 0.1rem; min-height: 44px; width: 220px; display: flex; justify-content: center; align-items: center; text-decoration: none; }
+        .btn-sub { background: #444; font-size: 0.75rem; }
+        .btn-twitter { background: transparent; color: #1da1f2; border: 1px solid #1da1f2; margin-top: 25px; padding: 8px 20px; font-size: 0.75rem; min-height: 36px; width: auto; }
+        .btn-feedback { background: #6c5ce7; margin-top: 10px; }
+        .prologue-text { font-size: 0.9rem; line-height: 1.8; color: #ddd; white-space: pre-wrap; width: 100%; max-height: 55vh; overflow-y: auto; padding-right: 5px; margin-bottom: 20px; -webkit-overflow-scrolling: touch; }
+        .hint-text { margin-top: 25px; font-size: 0.75rem; color: #777; text-align: left; border-top: 1px solid #333; padding-top: 15px; width: 100%; line-height: 1.6; }
+        #ura-start-btn { background: #ff69b4; color: white; }
+        
+        #ura-feed-btn { 
+            position: relative; top: auto; left: auto; transform: none; z-index: auto; 
+            margin-top: 0; margin-bottom: 15px; 
+            width: 85px; height: 85px; min-height: 85px;
+            padding: 0; 
+            border-radius: 50%;
+            font-size: 0.8rem; 
+            background: rgba(212, 175, 55, 0.85); color: #000; 
+            border: 2px solid var(--gold-sub); 
+            justify-content: center; align-items: center; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            flex-shrink: 0;
+            line-height: 1.2;
+        }
+
+        #custom-modal-overlay { z-index: 2000; background: rgba(0,0,0,0.85); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); }
+        #custom-modal-box { background: rgba(20, 15, 12, 0.95); border: 1px solid var(--gold-sub); border-radius: 8px; padding: 25px 20px; width: 85%; max-width: 320px; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.6); }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div id="start-screen">
+        <div class="title-box"><img src="title.png" id="title-img" alt="title.png" onerror="this.style.opacity='0.5'"></div>
+        <p id="sub-title">憧れのままのはずだった…<br>危険な一夜の幕が上がる！</p>
+        <div class="start-badge-container" id="start-badges">
+            <div class="start-badge" id="sb-TRUE" onclick="replayEnd('TRUE')">✨</div>
+            <div class="start-badge" id="sb-HAPPY" onclick="replayEnd('HAPPY')">✋</div>
+            <div class="start-badge" id="sb-NORMAL" onclick="replayEnd('NORMAL')">🔥</div>
+            <div class="start-badge" id="sb-BAD" onclick="replayEnd('BAD')">👁️</div>
+            <div class="start-badge" id="sb-CLINGY" onclick="replayEnd('CLINGY')">🌀</div>
+        </div>
+        <div class="start-badge-container" id="ura-badges" style="display:none; margin-top: 0;">
+            <div class="start-badge" id="sb-URA_TRUE" onclick="replayEnd('URA_TRUE')">✨</div>
+            <div class="start-badge" id="sb-URA_HAPPY" onclick="replayEnd('URA_HAPPY')">✋</div>
+            <div class="start-badge" id="sb-URA_NORMAL" onclick="replayEnd('URA_NORMAL')">🔥</div>
+            <div class="start-badge" id="sb-URA_BAD" onclick="replayEnd('URA_BAD')">👁️</div>
+            <div class="start-badge" id="sb-URA_CLINGY" onclick="replayEnd('URA_CLINGY')">🌀</div>
+        </div>
+        <div id="key-status" style="margin-bottom: 10px; color: #777; font-size: 0.85rem;">
+            🔑 所持している鍵: <span id="key-count">0</span>個
+        </div>
+        <button class="system-btn" onclick="handleStart(false)">STORY START</button>
+        <button class="system-btn" id="ura-start-btn" style="display:none;" onclick="handleStart(true)">裏モード START</button>
+        <button class="system-btn btn-sub" onclick="showTrivia()">LOG/CONTACT</button>
+    </div>
+
+    <div id="trivia-screen" class="screen" style="display:none;">
+        <h2 style="font-weight: 300; color: var(--gold-sub); align-self: center; letter-spacing: 0.2rem;">KNIGHTS LOG</h2>
+        <div class="prologue-text" style="font-size:0.8rem; line-height:1.8; color:#aaa; margin-top: 15px; max-height: none; overflow: visible;">
+【制作について】
+こちらは原作とは一切関係のない二次創作ゲームです。
+ゲーム制作、サムネイル制作、テキスト制作はろカス（@mhks_dora）です。
+            
+ご感想や、最初にたどり着いたエンディングなどを教えていただけるととても嬉しいです。
+マシュマロのリンクはこのページ下部にあります。
+今後のモチベーションになりますので切実にお願いします。 
+            
+ジクランのランスロットさんはとにかくいじらしくて可愛いのがすきなので少しでも伝わるといいなと思いました。
+            
+黒竜騎士団の時系列にしてしまうとその後王殺し事件が起きることが確定するため、正直悩みました。
+現在の時系列のゲームも作ろうと思いますが、イメージがかたまっていません…。もしよろしければお題や見たいシチュエーションなどを教えてください。
+こういうゲームがやりたい！というご要望ももちろん大歓迎です。
+なお、そちらを参考にしてゲーム制作をする可能性がありますのでご了承ください。
+            
+全エンド回収すると何か起こるので、ぜひやってみてください。
+そこそこ頑張って作ったので楽しんでもらえるといいなと思っています。
+        </div>
+        <a href="https://t.co/uL2SSxkrjp" target="_blank" class="system-btn btn-feedback">感想・ご意見</a>
+        <button class="system-btn" style="align-self: center;" onclick="closeTrivia()">BACK</button>
+    </div>
+
+    <div id="prologue-screen" class="screen" style="display:none;">
+        <div class="prologue-text" id="prologue-content"></div>
+        <button class="system-btn" style="align-self: center;" onclick="showExplanation()">NEXT</button>
+    </div>
+
+    <div id="explanation-screen" class="screen" style="display:none;">
+        <h2 style="font-weight: 300; color: var(--gold-sub); align-self: center; letter-spacing: 0.2rem;">SYSTEM</h2>
+        <div style="text-align:left; font-size:0.8rem; line-height:1.8; width:100%; color:#aaa; margin-top: 15px;" id="sys-exp-content">
+            <p>・<b>LOVE</b><br>左上のゲージ。<br>ジークフリートさんとランスロットの心の距離です。<br>なお、2人は両片思いです。</p>
+            <p>・<b>PANIC</b><br>右上のゲージ。 <br>ランスロットの焦燥を表します。<br>高まるとランスロットがパニックになり、<br>心臓の音が響き、選択肢が浮遊し始めます。<br>※さらにパニックが高まると、制限時間が発生します。</p>
+        </div>
+        <button class="system-btn" style="align-self: center;" onclick="initGame()">START</button>
+    </div>
+
+    <div id="timer-container"><div id="timer-bar"></div></div>
+    <div id="panic-overlay" style="display:none;"></div>
+    <div id="ura-dark-overlay" style="display:none;"></div>
+
+    <div class="hud" id="hud" style="display:none;">
+        <div class="gauge-row">
+            <div><div class="gauge-label">LOVE</div><div class="gauge-bg"><div id="love-bar"></div></div></div>
+            <div><div class="gauge-label">PANIC</div><div class="gauge-bg"><div id="anxiety-bar"></div></div></div>
+        </div>
+    </div>
+
+    <div id="stage" style="display:none;">
+        <div id="fire-wrapper"><div id="fire-animation">🔥</div></div>
+    </div>
+
+    <div id="msg-window" onclick="advance()" style="display:none;">
+        <div id="name-tag"></div><div id="text-content"></div>
+    </div>
+
+    <div id="choice-container">
+        <button id="ura-feed-btn" class="system-btn" style="display:none;" onclick="feedFire()">薪をくべる</button>
+    </div>
+
+    <div id="result-screen" class="screen" style="display:none; justify-content: center; padding-top: 30px;">
+        <h2 id="end-title" style="font-weight:300; align-self: center;"></h2>
+        <div id="end-desc" class="prologue-text"></div>
+        <div id="end-hint" class="hint-text"></div>
+        <button class="system-btn" onclick="location.reload()">タイトル画面へ</button>
+        <a id="twitter-share-btn" href="#" target="_blank" class="system-btn btn-twitter">SHARE ON X</a>
+    </div>
+
+    <div id="custom-modal-overlay" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; justify-content:center; align-items:center;">
+        <div id="custom-modal-box">
+            <div id="custom-modal-text" style="color:#fff; font-size:0.9rem; margin-bottom:20px; line-height:1.6; font-weight:bold;"></div>
+            <div id="custom-modal-buttons" style="display:flex; justify-content:center; gap:15px; flex-wrap:wrap;"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+
+    const $ = id => document.getElementById(id);
+    const hide = id => { const el = $(id); if(el) el.style.display = 'none'; };
+    const show = (id, d = 'block') => { const el = $(id); if(el) el.style.display = d; };
+
+    let audioCtx = null, heartbeatInterval = null, timerInterval = null;
+    function initAudioContext() {
+        try {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+        } catch (e) { console.error(e); }
+    }
+    function playClickSound() {
+        if (!audioCtx) return;
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+        o.type = 'sine'; o.frequency.setValueAtTime(500, audioCtx.currentTime);
+        o.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime + 0.12);
+        g.gain.setValueAtTime(0.08, audioCtx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.12);
+        o.connect(g); g.connect(audioCtx.destination);
+        o.start(); o.stop(audioCtx.currentTime + 0.12);
+    }
+    function startFireSound() {
+        if (!audioCtx) return;
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const bSize = audioCtx.sampleRate * 2, buf = audioCtx.createBuffer(1, bSize, audioCtx.sampleRate);
+        const out = buf.getChannelData(0); let last = 0;
+        for (let i = 0; i < bSize; i++) {
+            let white = Math.random() * 2 - 1;
+            out[i] = (last + (0.018 * white)) / 1.018; last = out[i]; out[i] *= 4.0; 
+        }
+        const rum = audioCtx.createBufferSource(); rum.buffer = buf; rum.loop = true;
+        const f = audioCtx.createBiquadFilter(); f.type = "lowpass"; f.frequency.value = 300;
+        const g = audioCtx.createGain(); g.gain.value = 0.025; 
+        rum.connect(f).connect(g).connect(audioCtx.destination); rum.start();
+        function crackle() {
+            if (!audioCtx) return;
+            const cb = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.02, audioCtx.sampleRate);
+            const cd = cb.getChannelData(0);
+            for(let i=0; i<cd.length; i++) cd[i] = (Math.random() * 2 - 1) * 0.6;
+            const cs = audioCtx.createBufferSource(); cs.buffer = cb;
+            const cf = audioCtx.createBiquadFilter(); cf.type = "highpass"; cf.frequency.value = 1500;
+            const cg = audioCtx.createGain();
+            cg.gain.setValueAtTime(0.06 * Math.random(), audioCtx.currentTime);
+            cg.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.04);
+            cs.connect(cf).connect(cg).connect(audioCtx.destination); cs.start();
+            setTimeout(crackle, Math.random() * 800 + 100);
+        }
+        crackle();
+    }
+    function triggerHeartbeat(anx) {
+        if (anx < 25) { if (heartbeatInterval) { clearInterval(heartbeatInterval); heartbeatInterval = null; } return; }
+        if (heartbeatInterval) clearInterval(heartbeatInterval);
+        const bpm = Math.max(300, 1200 - (anx * 4)), vol = Math.min(0.6, (anx / 210) * 0.5);
+        heartbeatInterval = setInterval(() => {
+            if (!audioCtx) return;
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const now = audioCtx.currentTime;
+            [0, 0.22].forEach(d => {
+                const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+                o.frequency.setValueAtTime(45, now + d); o.frequency.exponentialRampToValueAtTime(5, now + d + 0.2);
+                g.gain.setValueAtTime(vol, now + d); g.gain.linearRampToValueAtTime(0, now + d + 0.2);
+                o.connect(g); g.connect(audioCtx.destination);
+                o.start(now + d); o.stop(now + d + 0.2);
+            });
+        }, bpm);
+    }
+
+
+    const PROLOGUE_TEXT = `ある日、黒竜騎士団に舞い込んだ一件の魔物討伐依頼。\nたまたま近くに遠征中だったジークフリートとランスロットの手により、討伐は一瞬で完了した。だが、死の間際に魔物が放った呪いが、あろうことかランスロットに直撃してしまう！\n\nその呪いは「理性の消失」。\n本能のままに生きてしまうという恐ろしいもので、破壊衝動や深い恨みを持つ者にかかれば、またたく間に国ひとつを滅ぼしかねない。\n\nしかし、騎士団の誰もがランスロットなら大丈夫だろうと高をくくっていた。\nなぜなら、ランスロットは善性と正義感の塊。心優しい彼の本能がむき出しになったところで、せいぜい小鳥にエサをやり続ける程度だろう。\n\n解呪師の到着は明日の朝。ランスロットはジークフリートと共に、2人きりで野営の見張りをすることになった。\n\n……そう、誰も心配などしていなかったのだ。ランスロット本人を除いては。\n\nランスロットはジークフリートを心から尊敬し、いつもキラキラとした憧れの眼差しを向けている。____黒竜騎士団員周知の事実だ。\nしかし、実のところその想いは憧れの域をとうに超えていた。\n何を隠そう、ランスロットはジークフリートのことが大好きなのだ！\n\n普段は鋼の理性で抑え込んでいる淡くて強い恋心が、今解き放たれようとしている。 \n果たしてランスロットは、理性を守り抜き、平穏な朝を迎えることができるのか…！ \n\nプレイヤーのあなたは、いつもよりも大胆なランスロットの言動をコントロールし、彼らをハッピーエンドに導いてください！\n大胆な言動を取りすぎるとランスロットがパニックになり、ジークフリートさんも心配してしまいます。\n\n【ネタバレ】\n実はジークフリートさんもランスロットのことが大好きなのでどうやってもハッピーエンドにしかなりません。 \n安心してお好きな選択肢を選んでください！`;
+    const URA_PROLOGUE_TEXT = `ある日、黒竜騎士団に舞い込んだ一件の魔物討伐依頼。\n討伐自体はすぐに終わったが、死の間際に魔物が放った呪いに、俺は気づくことができなかった。小さな悲鳴に驚いて振り向くと、呪いはあろうことかランスロットに直撃していた。\n\nその呪いは「理性の消失」。\n本能のままに生きてしまうという恐ろしいものだが、ランスロットならば大丈夫だろうと、ひとまず安心する。\nなぜなら、ランスロットは善性と正義感の塊。心優しい彼の本能がむき出しになったところで、せいぜい道端のゴミを全部拾いはじめるくらいだろう。\n\n解呪師の到着は明日の朝。俺はランスロットと共に、2人きりで野営の見張りをすることになった。\n\n最近は騎士団も忙しく、久しぶりに一緒の時間を過ごせると、胸を弾ませる。\n\nランスロットは俺を心から尊敬し、いつもキラキラとした憧れの眼差しを向けてくる。\nしかし俺は、ランスロットのことをただの弟子として可愛く思っているのではない。…何を隠そう、俺はランスロットを愛しているのだ。\n\nせっかくだ、2人きりの時間を楽しもうではないか。\nなぜか少しそわそわしているランスロットの隣に座り、俺は薪をくべ始めた。\n\nプレイヤーのあなたは、炎の大きさをコントロールして、2人の夜を見守ってください。\n炎が小さくなるほど、夜の闇に紛れてランスロットが大胆になります。\n\n【ネタバレ】\n実はランスロットもジークフリートさんのことが大好きなのでどうやってもハッピーエンドにしかなりません。\n薪をくべながら推しカプを眺めるだけのモードです。`;
+
+    const sData = [
+        [
+            "ランスロット", 
+            "（薪が爆ぜる音……。副団長になってからは慣れているはずの、ジークフリートさんの隣。 今日は呪いのせいで、少しの距離がいつもよりももどかしい。……今の関係を守るためにも、この数センチの距離を踏み越えるわけにはいかない。）"
+        ],
+        [
+            "ジークフリート", 
+            "「ランスロット、夜風が冷えるな。少しこちらへ来い。火の側が一番暖かいぞ」", 
+            [
+                ["傍に寄り、「ずっとこうしていたいです」と呟く", 15, 10],
+                ["「ありがとうございます」と静かに隣に座る", 5, 5],
+                ["「お言葉に甘えます」と寄りかかる", 10, 15],
+                ["「火を絶やさないよう気を付けます」と薪をくべる", 0, 0]
+            ]
+        ],
+        [
+            "ジークフリート", 
+            "「茶を淹れてくれたのか、ありがとう。ランスロットはいつも気が利くな」", 
+            [
+                ["「お茶を飲むときはふたりきりでお話できますから」", 10, 10],
+                ["「副団長としてあなたの側にいられる、俺の誇りです」", 5, 0],
+                ["「想いをこめて淹れているんですよ」と微笑む", 15, 5],
+                ["回し飲みの器にドキドキしながら口をつける", 0, 15]
+            ]
+        ],
+        [
+            "ジークフリート", 
+            "（ふと、優しいまなざしでランスロットを見つめる。火の影が彼の瞳を揺らしている）", 
+            [
+                ["その瞳をじっと見つめ返す", 15, 15],
+                ["どうしましたかと首を傾げる", 10, 5],
+                ["恥ずかしくなって目を逸らす", 5, 10],
+                ["顔に何かついていますかと尋ねる", 0, 0]
+            ]
+        ],
+        [
+            "ジークフリート", 
+            "「手が少し震えているぞ。寒いのか？それともやっぱり呪いが辛いのか？」そう言って、ランスロットの手に自分の手を重ねた。", 
+            [
+                ["「ジークフリートさんの手、大きくてあたたかくて…すごく落ち着きます。」", 15, 10],
+                ["「きっと気のせいです！」薪をくべてごまかす", 0, 5],
+                ["そっと手のひらを裏返し、ジークフリートさんの手を握る", 10, 15],
+                ["「…ちょっと不安なのかもしれません」と笑う", 5, 0]
+            ]
+        ],
+        [
+            "ジークフリート", 
+            "「髪の毛に灰がついているぞ。」自然に手を伸ばし、やわらかな手つきでランスロットの前髪に触れる。", 
+            [
+                ["じっと目を伏せて、静かに灰を払ってもらう", 10, 5],
+                ["「ふふっ、少しくすぐったい…。」", 5, 0],
+                ["「このままずっと、あなたに触れられていたいと思ってしまいます」", 15, 15],
+                ["あまりの近さに、息を止めて真っ赤になる", 0, 10]
+            ]
+        ],
+        [
+            "ジークフリート", 
+            "「ほら、こんなところにも。」灰を払う手を、首筋のくせ毛に伸ばした。", 
+            [
+                ["「自分でもできますっ！」と慌ててのけぞる", 0, 5],
+                ["吐息がかかる距離に、頭が真っ白になる", 5, 15],
+                ["「……ジークフリートさんの手、優しくて好きです」と思わず口にする", 15, 10],
+                ["「あ……ありがとうございます……」と震える声で答える", 10, 0]
+            ]
+        ],
+        [
+            "ジークフリート", 
+            "震える姿にふと昔を思い出す。「立派になったな、ランスロット。目を瞠るほどだ」", 
+            [
+                ["「憧れの…あなたの背中を追いかけ続けましたから」", 10, 10],
+                ["「いつか、あなたの隣に立てる男になりたいんです」", 15, 15],
+                ["「あなたの弟子ですから当然です」", 5, 5],
+                ["「ありがとうございます。 これからも精進します」", 0, 0]
+            ]
+        ],
+        [
+            "ジークフリート", 
+            "「たまにはこんなキャンプも悪くないな。 今度は任務関係なくどうだ。行きたい場所はあるか。」", 
+            [
+                ["「あなたと一緒なら、どこにでも」とほほ笑む", 15, 5],
+                ["「誰もいない静かな場所に行きたいです。2人きりで」", 10, 15],
+                ["「……約束ですよ？ 絶対に、ですよ」と指切りを求める", 5,0 ],
+                ["「それってなんだか、デートみたいですね」と呟く", 0, 10]
+            ]
+        ],
+        [
+            "ジークフリート", 
+            "（長い沈黙。ジークフリートは焚き火を見つめたまま、何かを言いかけて止めた……）", 
+            [
+                ["彼の肩に静かに頭を預ける", 15, 15],
+                ["「どうしたんですか、ジークフリートさん…」と見つめる", 5, 5],
+                ["何も言わず、言葉を待つ", 0, 0],
+                ["ジークフリートさんの手に自分の手を重ねる", 10, 10]
+            ]
+        ],
+        [
+            "ジークフリート", 
+            "「…俺は師として未熟だと思うことがある。もしお前を見つけたのが俺じゃなかったとしたら…。」", 
+            [
+                ["「そんなのありえません。 ジークフリートさんが俺の唯一ですよ」", 15, 10],
+                ["「そしたらきっと俺があなたを見つけますよ」", 10, 15],
+                ["「あなたのおかげで今の俺がいるんです」", 5, 5],
+                ["「…そんな冗談、言わないでください」", 0, 0]
+            ]
+        ],
+        [
+            "ジークフリート", 
+            "「……ランスロット、眠いなら寝るといい。 肩を貸すぞ。俺が見張りをする」", 
+            [
+                ["「……じゃあ、お言葉に甘えて」と、そっと肩に頭を預ける", 10, 10],
+                ["「起きて…、あなたとこうしてお話していたいです。」", 5, 5],
+                ["「甘えすぎちゃいそうで、怖いです……」と呟く", 0, 0],
+                ["肩に触れるぬくもりに目を閉じて頬を摺り寄せた。", 15, 15]
+            ]
+        ],
+        [
+            "ジークフリート", 
+            "（まるであやすかのように、ランスロットの肩を抱き、 さすり始める）", 
+            [
+                ["ジークフリートさんの腕に手を添える", 15, 10],
+                ["そのまま腕の中でじっとする", 10, 15],
+                ["「どうしたんですか」と優しく声をかける", 5, 5],
+                ["苦しいですとはぐらかす", 0, 0]
+            ]
+        ],
+        [
+            "ジークフリート", 
+            "（ランスロットの頬に手を添え、灰を払いのける。）", 
+            [
+                ["何も言わず、静かに目を閉じる", 10, 10],
+                ["熱い視線を送る", 5, 15],
+                ["彼の手に自分の手を重ね、瞳を見つめる", 15, 5],
+                ["くすぐったいです、と笑って避ける", 0, 0]
+            ]
+        ],
+        [
+            "ランスロット", 
+            "（夜は静かに更けていく。 焚き火の光の中で2人の影が重なっている。……勇気を出して、本当の気持ちを伝えてもいいだろうか）", 
+            [
+                ["「ジークフリートさん。ただの憧れじゃなくて俺はあなたのことが大好きです」", 15, 15],
+                ["「これからもずっと、あなたの隣にいさせてください」", 10, 10],
+                ["「……少しだけこのままくっついていてもいいですか？」", 5, 5],
+                ["「ジークフリートさん。俺, 今すごくドキドキしています」", 0, 0]
+            ]
+        ]
+    ];
+
+    const uText = [
+        [
+            "ジークフリート", 
+            "（薪が爆ぜる音……。ランスロットは、呪いのせいか妙に静かだ。 いつもならば、表情をころころ変えて楽しそうに喋るのに。 …いや、俺が意識しすぎているだけか。いつまでも、ただ可愛い弟子として見守ってやれれば良かったのだが、最近はつい手を出してしまいそうになる。）"
+        ],
+        [
+            "ジークフリート", 
+            "（夜風が冷えてきた。 ランスロットは寒くないだろうか。…もっとこちらに寄ってくれればいいのに。 ）"
+        ],
+        [
+            "ジークフリート", 
+            "（ランスロットが淹れてくれた茶を一口すする。 …温かく、気遣いが身に染みる。お茶を淹れるのは苦手だと言っていたのに…。 もっと素直に感謝を伝えられたらいいのだが。）"
+        ],
+        [
+            "ジークフリート", 
+            "（火の影に揺れるランスロットの横顔を見つめる。 呪いにかかったことを恥じているらしく、いつもより少し頼りなく、幼い表情に見える。…綺麗な顔だ。 ）"
+        ],
+        [
+            "ジークフリート", 
+            "（ランスロットの手が少し震えているのに気づく。寒いならば、もっとこちらに寄ってくれればいいのに。それとも、他に何か心配なことでもあるのだろうか。 ）"
+        ],
+        [
+            "ジークフリート", 
+            "（俺がくべた薪から細かな灰の粉が散り、ふとランスロットのつややかな髪の毛に落ちる。考える前に、手を伸ばして払いのける。 ）"
+        ],
+        [
+            "ジークフリート", 
+            "（俺が触れた瞬間、ランスロットが動揺したのが分かった。…俺の想いが伝わって、おびえさせているのかもしれない。その瞬間、小さなつむじ風が起き、灰の粉がランスロットの首筋にかかった。 ）"
+        ],
+        [
+            "ジークフリート", 
+            "（俯く姿に、昔のランスロットを思い出す。 …最初は頼りなかったが、今では立派に副団長を務めている。俺の助けもじきに不要になるだろう。 誇らしさと、ほんの少しの寂しさを感じる。）"
+        ],
+        [
+            "ジークフリート", 
+            "（久しぶりにランスロットと2人で話せる状況に喜びを感じる。ランスロットはどう思っているのだろうか。仕事に関係なくても、いつも俺に笑顔でついてきてくれるのだから、少しはうぬぼれてもよいのだろうか。）"
+        ],
+        [
+            "ジークフリート", 
+            "（沈黙が流れる。 頬を染めてちらりとこちらを伺うランスロットを見て…衝動的に言いかけた言葉は、炎の中に消えた。きっと、今はまだ伝える時ではない。 ）"
+        ],
+        [
+            "ジークフリート", 
+            "（もしもの話だ。 ランスロットは言うまでもなく優秀だ。もし団長が俺でなくても頭角を現したと断言できる。なぜだかそれが切なかった。 ）"
+        ],
+        [
+            "ジークフリート", 
+            "（夜は長い。俺よりも体力の劣るランスロットはきっと疲れているだろう。肩を貸すと言えば、俺にもたれて眠ってくれるだろうか。）"
+        ],
+        [
+            "ジークフリート", 
+            "（ランスロットのぬくもりに、胸の鼓動が高まるのを感じる。ランスロットも緊張しているようだ。頬が赤く見えるのは、炎が燃えているせいだろうか。）"
+        ],
+        [
+            "ジークフリート", 
+            "（先ほどから、ランスロットは妙に素直なようだった。想いが口からこぼれそうになるが、雰囲気にのまれているだけかもしれないと踏みとどまる。…ふと、ランスロットのばら色の頬に灰の粉がかかる。 ）"
+        ],
+        [
+            "ジークフリート", 
+            "（見張りを始めてから、どれほどの時間が経ったのだろう。一瞬のようにも、永遠のようにも思える。…ずっとこの時間が続くといいと願った。）"
+        ]
+    ];
+
+    const SCENARIO_DATA = sData.map(d => ({ name: d[0], text: d[1], choices: d[2] ? d[2].map(c => ({ text: c[0], val: c[1], anx: c[2] })) : null }));
+    const URA_SCENARIO_DATA = uText.map((t, i) => ({ name: t[0], text: t[1], choices: SCENARIO_DATA[i].choices }));
+
+    const buildEndings = arr => arr.reduce((acc, x) => ({ ...acc, [x[0]]: { id: x[0], title: x[1], desc: x[2], hint: x[3] } }), {});
+    
+    const ENDINGS = buildEndings([
+        [
+            "TRUE", 
+            "あなたの隣に立ちたい", 
+            "呪いがもたらす衝動を抑えて一夜を明かすことができたことにほっとして、大きく息を吐く。きっと今日からもジークフリートさんの隣で戦えるはずだ。____俺はただ、ジークフリートさんに呆れられてしまうことだけが怖かった。恐る恐る彼を見遣ると、優しい瞳でこちらを見つめている。俺はそれに少し安堵しながらも、勝手に高鳴る胸の鼓動を抑えきれない。「…ランスロット。」呼びかけに答えると、彼は微笑み、俺の頬を撫でた。", 
+            "できる限り呪いを制御して、取り乱さないように注意してください。"
+        ],
+        [
+            "HAPPY", 
+            "言葉に出さずとも", 
+            "「……夜風が少し冷えるようです。」俺はジークフリートさんの外套の裾を掴み、そのまま肩が触れ合う距離まで寄り添った。指先が微かに震え、ジークフリートさんに縋るような態度を隠せない。…こんなことをして、浅ましく思われてしまったらどうしよう。衝動に身を任せながら、ふと不安になる。ジークフリートさんは、そんな不安をかき消すかのように、俺の肩を強く抱き寄せた。俺は満足そうに瞳を閉じ、その胸に顔を埋める。きっと夜明けまで、この体温が離れることはない。", 
+            "パニックに気を付けて、頑張って距離を縮めてみてください。"
+        ],
+        [
+            "NORMAL", 
+            "あたたかくて幸せな夜", 
+            "「……ジークフリートさん、少しだけ、このままでいさせてください」俺はジークフリートさんの膝にそっと自分の手を重ねて、焚き火を見つめた。ゆらゆらと揺れる炎に、心が落ち着いていくのを感じる。ジークフリートさんがそっと俺の手を握り返す。お互いの存在が魂に深く馴染んでいくような、あたたかな夜だ。こんな夜がずっと続けばいいのにと思う。呪いが解けたら、この気持ちを言葉にして伝えてみようか。", 
+            "この際、少し大胆に好きな気持ちをにじませてみるのもいいかもしれません。"
+        ],
+        [
+            "BAD", 
+            "瞳に愛を滲ませて", 
+            "呪いのせいだろうか。敬愛するジークフリートさんの姿をずっと眺めていたい、という欲求が抑えられない。俺は言葉を尽くす代わりに、熱い瞳でジークフリートさんを見つめ続けた。こんなに見つめると想いが溢れてばれてしまうと思うのに、やめられない。それとも、いつも鈍感なジークフリートさんだから、少しは許してもらえるだろうか。不安に思ったが、ジークフリートさんは優しく俺を見つめ返してくれた。お互いに無言のまま時間が過ぎていく。その瞳には、恋の火種が静かに灯っていた。", 
+            "好きという気持ちが溢れすぎないように気を付けてみてください。"
+        ],
+        [
+            "CLINGY", 
+            "想いがぐるぐる駆け巡る", 
+            "「ジークフリートさん、俺、おかしいんです。呪いの影響です。助けて…！」普段なら絶対に取れないような態度をとってしまい、俺は完全にパニックになってしまった。泣きそうになりながらジークフリートさんにしがみつく。俺の想いはもはや明確だろう。もし呆れられてしまったら…！怖くて彼の目を見られない。ただ許されたくて必死にしがみつくと、ジークフリートさんはゆっくりと俺の頭を撫でて呟いた。「大丈夫だ、ランスロット。俺もお前を愛しているぞ。」", 
+            "呪いの影響を抑えきれず、普段取らないような言動をとるのもいいかもしれません。"
+        ]
+    ]);
+
+    const URA_ENDINGS = buildEndings([
+        [
+            "URA_TRUE", 
+            "お前の隣にいたい", 
+            "ランスロットは一晩中何かに耐えているようだった。呪い通り理性の咎が外れ、それを一生懸命抑えていたのだとすれば、もしかすると。ランスロットが不安げにこちらを見遣る。名前を呼ぶと、素直に返事を返してきた。その姿に庇護欲がそそられる。思わずランスロットの頬を撫でると、愛おしそうに手のひらにすり寄ってきた。可愛らしい姿に、想いがこぼれた。「愛しているぞ、ランスロット。」", 
+            "薪をどんどんくべて明るさを保ち、ランスロットが冷静でいられるようにしてあげましょう。"
+        ],
+        [
+            "URA_HAPPY", 
+            "触れた指先から伝わる", 
+            "「……夜風が少し冷えるようです。」ランスロットはそう呟きながら、俺の腕の中に自分から収まってきた。俺に触れる指先に力がこもっている。呪いで理性の咎が外れていることは明白だが、これが彼の想いなのだろう。一生懸命な甘え方に、愛おしさが抑えきれなくなる。「……寒くないようにしてやる」俺はランスロットを強く抱きしめ、額に唇を落とした。腕の中でランスロットが笑う。夜が明けるまでたっぷりと、その温もりを愛で続けた。", 
+            "ランスロットがパニックにならない程度に、大胆に甘いムードを作ってみましょう。"
+        ],
+        [
+            "URA_NORMAL", 
+            "いつかこの夜をずっと", 
+            "ランスロットは何も言わず、ただ俺の隣で幸せそうに微睡んでいる。呪いの影響でいつもより素直になっているのか、俺が少し動くだけで、不安そうに俺の袖をぎゅっと握るのが可愛らしい。「ここにいる。安心しろ」俺が髪を撫でてやると、ランスロットは嬉しそうに目を細めた。今はきっと、呪いの影響があるだろう。呪いが解けたら、彼に想いを伝えよう。これから先、きっと何度もこんな夜を過ごせるだろうから。", 
+            "適度に薪をくべれば、適度にいいムードが作れるでしょう。"
+        ],
+        [
+            "URA_BAD", 
+            "熱いまなざしに焦がれる", 
+            "ランスロットが食い入るように俺の顔を見つめてくる。何を考えているのかは分からないが、その瞳には嘘偽りのない敬愛が溢れていた。「……ランスロット、そんなに見つめてどうした？」「……いえ、何も」ランスロットは赤くなって目を逸らすが、少し経つと、すぐにまた俺を見つめる。言い表しようのない愛おしさが俺の心を満たす。俺もランスロットも無言のまま、時間だけが過ぎていく。なにものにも代えがたい、柔らかくて幸せな時間だった。", 
+            "ランスロットが寒くならないように、炎を絶やさず見つめましょう。"
+        ],
+        [
+            "URA_CLINGY", 
+            "愛しているから大丈夫", 
+            "パニックになったランスロットが、必死に俺を求めている。普段の真面目な姿を知っているからこそ、あまりにいじらしく思えた。頭を撫でて静かに愛を伝えると、少しの間を置いて小さな嗚咽が聞こえてきた。「俺だってあなたのことを愛しています。」途切れ途切れになりながらも一生懸命伝えてくれる。少し過呼吸気味になっているな。心配そうに見つめると、ふと顔を上げたランスロットがおもむろに目を伏せる。俺は吸い寄せられるように、初めてのキスをした。", 
+            "薪をくべず暗闇を保てば、ランスロットは混乱し呪いの影響を強く受けるでしょう。"
+        ]
+    ]);
+
+    let step = 0, love = 0, anxiety = 0, isWaiting = false, driftIntervals = [];
+    const STORAGE_KEY = "zig_v25_audio_extreme", STORAGE_KEY_KEYS = "zig_v25_keys";
+    let collectedEnds = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+    let keys = parseInt(localStorage.getItem(STORAGE_KEY_KEYS) || "0", 10);
+    let isUraMode = false, isWaitingUra = false, fireSize = 100, uraFireInterval = null;
+
+    function showCustomModal(msg, buttons) {
+        $('custom-modal-text').innerHTML = msg.replace(/\n/g, '<br>');
+        const btnContainer = $('custom-modal-buttons');
+        btnContainer.innerHTML = '';
+        buttons.forEach(b => {
+            const btn = document.createElement('button');
+            btn.className = 'system-btn';
+            btn.style.width = 'auto';
+            btn.style.minWidth = '100px';
+            btn.style.padding = '10px 15px';
+            btn.style.marginTop = '0';
+            btn.innerText = b.text;
+            btn.onclick = () => { playClickSound(); b.onClick(); };
+            btnContainer.appendChild(btn);
+        });
+        show('custom-modal-overlay', 'flex');
+    }
+    function hideCustomModal() { hide('custom-modal-overlay'); }
+
+    function unlockEnding(id) {
+        hideCustomModal();
+        keys--; localStorage.setItem(STORAGE_KEY_KEYS, keys);
+        const wasNormal = ["TRUE", "HAPPY", "NORMAL", "BAD", "CLINGY"].every(eid => collectedEnds.includes(eid));
+        collectedEnds.push(id); localStorage.setItem(STORAGE_KEY, JSON.stringify(collectedEnds));
+        const badge = $('sb-' + id); if (badge) badge.classList.add('active');
+        $('key-count').innerText = keys;
+        const justCompletedNormal = !wasNormal && ["TRUE", "HAPPY", "NORMAL", "BAD", "CLINGY"].every(eid => collectedEnds.includes(eid));
+        initAudioContext(); hide('start-screen');
+        showResultScreen(getAvailableEndingsDict()[id], true, false, justCompletedNormal);
+    }
+
+    function replayEnd(id) {
+        if (!collectedEnds.includes(id)) {
+            if (keys > 0) {
+                showCustomModal("鍵を1つ消費して\nこのエンディングを解放しますか？", [
+                    { text: "解放する", onClick: () => unlockEnding(id) },
+                    { text: "やめる", onClick: hideCustomModal }
+                ]);
+            }
+            return;
+        }
+        initAudioContext(); hide('start-screen'); showResultScreen(getAvailableEndingsDict()[id], true);
+    }
+
+    function clearTimer() {
+        if (timerInterval) clearInterval(timerInterval);
+        timerInterval = null; hide('timer-container');
+    }
+    function startTimer(duration) {
+        show('timer-container');
+        const bar = $('timer-bar');
+        let startTime = performance.now();
+        timerInterval = setInterval(() => {
+            let remaining = duration - ((performance.now() - startTime) / 1000);
+            bar.style.width = Math.max(0, (remaining / duration) * 100) + "%";
+            if (remaining <= 0) handleTimeout();
+        }, 50);
+    }
+    function handleTimeout() {
+        clearTimer(); clearDrift();
+        hide('choice-container'); hide('ura-feed-btn');
+        isWaiting = false; isWaitingUra = false;
+        anxiety = Math.min(210, Math.max(0, anxiety + 20));
+        love = Math.min(210, Math.max(0, love + 5));
+        updateUI();
+        $('msg-window').className = 'is-monologue';
+        $('name-tag').innerText = "ランスロット";
+        $('text-content').innerText = "（パニックで頭が真っ白になり無言でジークフリートさんを見つめてしまった……！）";
+    }
+    function handleStart(ura = false) {
+        isUraMode = ura; initAudioContext(); hide('start-screen');
+        if (isUraMode) { document.body.classList.add('ura-mode'); show('ura-dark-overlay'); } 
+        else { document.body.classList.remove('ura-mode'); hide('ura-feed-btn'); }
+        startPrologue();
+    }
+    function showTrivia() { initAudioContext(); show('trivia-screen', 'flex'); }
+    function closeTrivia() { hide('trivia-screen'); }
+    function getAvailableEndingsDict() {
+        return ["TRUE", "HAPPY", "NORMAL", "BAD", "CLINGY"].every(id => collectedEnds.includes(id)) ? { ...ENDINGS, ...URA_ENDINGS } : ENDINGS;
+    }
+    function startPrologue() {
+        show('stage', 'flex'); show('prologue-screen', 'flex');
+        const nextBtn = document.querySelector('#prologue-screen .system-btn');
+        nextBtn.style.display = 'none';
+        const content = $('prologue-content');
+        content.scrollTop = 0; 
+        content.onscroll = () => {
+            if (content.scrollTop + content.clientHeight >= content.scrollHeight - 10) {
+                nextBtn.style.display = 'flex';
+            }
+        };
+        if(isUraMode) {
+            $('prologue-content').innerText = "【裏モード　ジークフリート視点】\n\n" + URA_PROLOGUE_TEXT;
+            $('sys-exp-content').innerHTML = `<p>裏モードでは選択肢がありません。<br>画面に表示される「薪をくべる」ボタンを押して薪をくべ、ムードを調整してください。</p><p>・<b>炎が大きい状態</b>：ランスロットも落ち着けるようです。<br>・<b>炎が小さい状態</b>：暗闇に紛れ、ランスロットの恋心も暴走してしまいます。<br><br>薪をくべながら推しカプを眺めるだけのモードと考えてください。<br>炎は薪をくべると大きくなり、放置すると小さくなります。</p>`;
+        } else {
+            $('prologue-content').innerText = PROLOGUE_TEXT;
+        }
+        setTimeout(() => {
+            if (content.scrollHeight <= content.clientHeight) nextBtn.style.display = 'flex';
+        }, 100);
+    }
+    function showExplanation() { hide('prologue-screen'); show('explanation-screen', 'flex'); }
+    function initGame() {
+        hide('explanation-screen'); show('hud', 'flex'); show('msg-window'); show('stage', 'flex'); show('panic-overlay');
+        setTimeout(() => { if(audioCtx) startFireSound(); }, 50);
+        updateUI(); advance();
+    }
+    function startUraFireDecay() {
+        if(!uraFireInterval) {
+            uraFireInterval = setInterval(() => {
+                if(isUraMode && isWaitingUra) { fireSize = Math.max(10, fireSize - 1.5); updateUraFireVisual(); }
+            }, 100);
+        }
+    }
+    function feedFire() {
+        if(isUraMode && isWaitingUra) { fireSize = Math.min(100, fireSize + 20); updateUraFireVisual(); }
+    }
+    function updateUraFireVisual() {
+        if(!isUraMode) return;
+        $('fire-wrapper').style.transform = `scale(${0.5 + (fireSize / 100) * 1.5})`;
+        $('fire-wrapper').style.opacity = 0.3 + (fireSize / 100) * 0.7;
+        $('ura-dark-overlay').style.background = `rgba(0,0,0, ${0.8 - (fireSize / 100) * 0.8})`;
+        
+        const baseR = 44 + (fireSize * 1.2);
+        const baseG = 26 + (fireSize * 0.6);
+        const baseB = 18 + (fireSize * 0.2);
+        $('game-container').style.background = `linear-gradient(180deg, rgb(${Math.round(baseR)},${Math.round(baseG)},${Math.round(baseB)}) 0%, #000 100%)`;
+    }
+    function advance() {
+        if (isWaiting) return;
+        if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+        clearDrift();
+        const currentData = isUraMode ? URA_SCENARIO_DATA : SCENARIO_DATA;
+        if (step < currentData.length) {
+            const current = currentData[step], msgWin = $('msg-window');
+            msgWin.className = current.choices ? 'is-question' : 'is-monologue';
+            $('stage').style.opacity = '1.0';
+            $('name-tag').innerText = current.name || "";
+            $('text-content').innerText = current.text;
+            if (current.choices) { isUraMode ? showUraNext(current.choices, SCENARIO_DATA[step]) : showChoices(current.choices); }
+            step++;
+        } else judge();
+    }
+    function clearDrift() { driftIntervals.forEach(clearInterval); driftIntervals = []; }
+    function showChoices(list) {
+        isWaiting = true; const container = $('choice-container');
+        container.querySelectorAll('.choice-btn').forEach(b => b.remove());
+        show('choice-container', 'flex');
+        [...list].sort(() => Math.random() - 0.5).forEach((c) => {
+            const b = document.createElement('button'); b.className = "choice-btn"; b.innerText = c.text;
+            if (anxiety >= 50) { 
+                b.style.position = "absolute"; b.style.transition = "none"; b.style.top = "0"; b.style.left = "0";
+                const move = () => {
+                    b.style.left = (Math.random() * (container.clientWidth - b.clientWidth - 20) + 10) + "px";
+                    b.style.top = (Math.random() * (container.clientHeight - b.clientHeight - 10) + 5) + "px";
+                }; move();
+                requestAnimationFrame(() => requestAnimationFrame(() => {
+                    b.style.transition = "top 1.2s cubic-bezier(0.45, 0.05, 0.55, 0.95), left 1.2s cubic-bezier(0.45, 0.05, 0.55, 0.95), background 0.2s";
+                    move(); driftIntervals.push(setInterval(move, 1600));
+                }));
+            }
+            if (anxiety >= 35) b.classList.add('shaking'); 
+            if (anxiety >= 65) b.classList.add('panic-flash'); 
+            b.onclick = (e) => {
+                e.stopPropagation(); playClickSound(); clearTimer();
+                love = Math.min(210, Math.max(0, love + c.val)); 
+                anxiety = Math.min(210, Math.max(0, anxiety + c.anx));
+                updateUI(); hide('choice-container'); isWaiting = false; advance();
+            };
+            container.appendChild(b);
+        });
+        if (anxiety >= 85) startTimer(5); 
+    }
+    function showUraNext(list, stdCurrent) {
+        isWaiting = isWaitingUra = true; fireSize = 70; updateUraFireVisual(); startUraFireDecay();
+        const container = $('choice-container');
+        container.querySelectorAll('.choice-btn').forEach(b => b.remove());
+        show('choice-container', 'flex'); show('ura-feed-btn', 'flex');
+        const nextBtn = document.createElement('button');
+        nextBtn.className = "choice-btn"; nextBtn.innerText = "NEXT";
+        Object.assign(nextBtn.style, { position: "absolute", bottom: "0px", right: "5%", width: "auto", minHeight: "36px", padding: "8px 25px", fontSize: "0.85rem", textAlign: "center", background: "#d4af37", color: "#000", justifyContent: "center", top: "auto", left: "auto" });
+        if (anxiety >= 35) nextBtn.classList.add('shaking'); 
+        if (anxiety >= 65) nextBtn.classList.add('panic-flash'); 
+        nextBtn.onclick = (e) => {
+            e.stopPropagation(); playClickSound(); clearTimer(); isWaitingUra = false; hide('ura-feed-btn');
+            const sorted = [...list].sort((a,b) => (a.val + a.anx) - (b.val + b.anx));
+            const c = sorted[fireSize > 75 ? 0 : fireSize > 50 ? 1 : fireSize > 25 ? 2 : 3];
+            let aL = c.val, aA = c.anx;
+            if (fireSize <= 50) { aL = Math.floor(aL * 1.5); aA = Math.floor(aA * 1.5); }
+            love = Math.min(210, Math.max(0, love + aL)); anxiety = Math.min(210, Math.max(0, anxiety + aA));
+            updateUI(); hide('choice-container');
+            $('msg-window').className = 'is-monologue'; 
+            $('name-tag').innerText = "RESULT"; 
+            $('text-content').innerHTML = `<div style="font-size:0.85rem; color:#fff; margin-bottom:8px; border-bottom:1px solid rgba(255,255,255,0.2); padding-bottom:8px; line-height:1.4;">${stdCurrent.name}：<br>${stdCurrent.text}</div><div style="font-size:0.85rem; color:#fff; line-height:1.4;">ランスロット：<br>${c.text}</div>`;
+            isWaiting = false;
+        };
+        container.appendChild(nextBtn);
+        if (anxiety >= 85) startTimer(5); 
+    }
+    function updateUI() {
+        $('love-bar').style.width = (love / 210 * 100) + "%"; $('anxiety-bar').style.width = (anxiety / 210 * 100) + "%";
+        triggerHeartbeat(anxiety);
+        
+        if (!isUraMode) {
+            const lP = (love / 210) * 100;
+            $('game-container').style.background = `linear-gradient(180deg, rgb(${Math.round(44 + lP * 0.3)},${Math.round(26 - lP * 0.2)},${Math.round(18 + lP * 0.2)}) 0%, #000 100%)`;
+        }
+
+        const ov = $('panic-overlay');
+        if (anxiety >= 25) { 
+            let blur = Math.min(4, (anxiety - 25) / 20), alpha = Math.min(0.8, (anxiety - 25) / 150);
+            ov.style.backdropFilter = ov.style.webkitBackdropFilter = `blur(${blur}px)`;
+            ov.style.background = `radial-gradient(circle, transparent 20%, rgba(255, 71, 87, ${alpha}) 100%)`;
+        } else {
+            ov.style.backdropFilter = ov.style.webkitBackdropFilter = `blur(0px)`; ov.style.background = `transparent`;
+        }
+    }
+    function judge() {
+        const AE = isUraMode ? URA_ENDINGS : ENDINGS;
+        
+        let resId = '';
+        if (anxiety >= 135) {
+            resId = isUraMode ? 'URA_CLINGY' : 'CLINGY';
+        } else if (anxiety <= 75) {
+            resId = isUraMode ? 'URA_TRUE' : 'TRUE';
+        } else {
+            if (love >= 115) {
+                resId = isUraMode ? 'URA_HAPPY' : 'HAPPY';
+            } else if (love >= 95) {
+                resId = isUraMode ? 'URA_NORMAL' : 'NORMAL';
+            } else {
+                resId = isUraMode ? 'URA_BAD' : 'BAD';
+            }
+        }
+        const res = AE[resId];
+        // ----------------------------------------------------------------
+        
+        const wasNormal = ["TRUE", "HAPPY", "NORMAL", "BAD", "CLINGY"].every(id => collectedEnds.includes(id));
+        let earnedKey = false;
+        if (collectedEnds.includes(res.id)) { keys++; localStorage.setItem(STORAGE_KEY_KEYS, keys); earnedKey = true; } 
+        else { collectedEnds.push(res.id); localStorage.setItem(STORAGE_KEY, JSON.stringify(collectedEnds)); }
+        
+        const isNowNormal = ["TRUE", "HAPPY", "NORMAL", "BAD", "CLINGY"].every(id => collectedEnds.includes(id));
+        showResultScreen(res, false, earnedKey, !wasNormal && isNowNormal);
+    }
+    function showResultScreen(res, isReplay, earnedKey = false, justCompletedNormal = false) {
+        clearTimer(); if(uraFireInterval) { clearInterval(uraFireInterval); uraFireInterval = null; }
+        ['hud','msg-window','choice-container','ura-feed-btn','stage','panic-overlay','ura-dark-overlay'].forEach(hide);
+        show('result-screen', 'flex');
+        $('end-title').innerText = res.title; $('end-desc').innerText = res.desc;
+        const hintEl = $('end-hint');
+        $('twitter-share-btn').href = `https://twitter.com/intent/tweet?text=${encodeURIComponent(`【PANICKNIGHTS】\n${isUraMode?"【裏ルートでクリア！】\n":""}エンディング：${res.title}に到達しました！\n#PANICKNIGHTS`)}`;
+        
+        if (isReplay) { hide('end-hint'); } 
+        else {
+            show('end-hint');
+            const cDict = getAvailableEndingsDict(), uKeys = Object.keys(cDict).filter(k => !collectedEnds.includes(k));
+            hintEl.innerHTML = uKeys.length > 0 ? `【未回収エンディングのヒント】<br>・${cDict[uKeys[Math.floor(Math.random() * uKeys.length)]].title}：${cDict[uKeys[Math.floor(Math.random() * uKeys.length)]].hint}` : "全てのエンディングにたどり着きました！";
+            if (earnedKey) hintEl.innerHTML += `<br><br><span style="color:var(--gold-sub); font-weight:bold;">🔑 既に見た結末にたどり着いたため、鍵を1つ獲得しました！<br>未開放のバッジを押してエンディングを解放できます。</span>`;
+        }
+        document.body.style.backgroundColor = "#0a0805";
+
+        if (justCompletedNormal) {
+            setTimeout(() => {
+                showCustomModal("✨すべてのノーマルエンディングを回収しました！✨<br><br>タイトル画面に「裏モード」が出現しました！", [
+                    { text: "OK", onClick: hideCustomModal }
+                ]);
+            }, 300);
+        }
+    }
+
+    window.onload = () => { 
+        collectedEnds.forEach(id => { const b = $('sb-' + id); if (b) b.classList.add('active'); });
+        if (["TRUE", "HAPPY", "NORMAL", "BAD", "CLINGY"].every(id => collectedEnds.includes(id))) {
+            $('start-screen').classList.add('dark-mode'); $('sub-title').innerHTML = "裏モードが解放されました。";
+            show('ura-start-btn', 'flex'); show('ura-badges', 'flex');
+        }
+        $('key-count').innerText = keys;
+    };
+</script>
+</body>
+</html>
