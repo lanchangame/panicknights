@@ -807,7 +807,7 @@
         show('result-screen', 'flex');
         $('end-title').innerText = res.title; $('end-desc').innerText = res.desc;
         const hintEl = $('end-hint');
-        $('twitter-share-btn').href = `https://twitter.com/intent/tweet?text=${encodeURIComponent(`【PANICKNIGHTS】\n${isUraMode?"【裏ルートでクリア！】\n":""}エンディング：${res.title}に到達しました！\n#PANICKNIGHTS`)}`;
+        $('twitter-share-btn').href = `https://twitter.com/intent/tweet?text=${encodeURIComponent(`【ジクラン二次創作ゲーム PANICKNIGHTS】\n${isUraMode?"【裏ルートでクリア！】\n":""}エンディング：${res.title}に到達しました！https://lanchangame.github.io/panicknights/`)}`;
         
         if (isReplay) { hide('end-hint'); } 
         else {
