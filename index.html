@@ -22,6 +22,7 @@
         #start-screen { z-index: 1000; display: flex; flex-direction: column; justify-content: flex-start; align-items: center; padding: 30px 25px 20px; text-align: center; background: #ffffff; color: #333; overflow-y: auto; transition: background 0.8s ease; }
         #sub-title { margin: 0; padding: 0; line-height: 1.5; }
         #start-screen.dark-mode { background: #fff5e6; }
+        #start-screen.all-clear { background: #ffe6eb !important; color: #333 !important; }
         .start-badge-container { display: flex; gap: 10px; margin-top: 20px; margin-bottom: 10px; flex-wrap: wrap; justify-content: center; }
         .start-badge { width: 42px; height: 42px; border-radius: 50%; background: #f0f0f0; border: 1px solid #ddd; display: flex; justify-content: center; align-items: center; cursor: pointer; transition: 0.3s; font-size: 18px; color: #ccc; }
         .start-badge.active { background: #222; border-color: #222; color: #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
@@ -69,6 +70,7 @@
         .prologue-text { font-size: 0.9rem; line-height: 1.8; color: #ddd; white-space: pre-wrap; width: 100%; max-height: 55vh; overflow-y: auto; padding-right: 5px; margin-bottom: 20px; -webkit-overflow-scrolling: touch; }
         .hint-text { margin-top: 25px; font-size: 0.75rem; color: #777; text-align: left; border-top: 1px solid #333; padding-top: 15px; width: 100%; line-height: 1.6; }
         #ura-start-btn { background: #ff69b4; color: white; }
+        #epilogue-start-btn { background: #ff7675; color: white; }
         
         #ura-feed-btn { 
             position: relative; top: auto; left: auto; transform: none; z-index: auto; 
@@ -114,6 +116,7 @@
         </div>
         <button class="system-btn" onclick="handleStart(false)">STORY START</button>
         <button class="system-btn" id="ura-start-btn" style="display:none;" onclick="handleStart(true)">裏モード START</button>
+        <button class="system-btn" id="epilogue-start-btn" style="display:none;" onclick="startEpilogue()">EPILOGUE</button>
         <button class="system-btn btn-sub" onclick="showTrivia()">LOG/CONTACT</button>
     </div>
 
@@ -122,13 +125,13 @@
         <div class="prologue-text" style="font-size:0.8rem; line-height:1.8; color:#aaa; margin-top: 15px; max-height: none; overflow: visible;">
 【制作について】
 こちらは原作とは一切関係のない二次創作ゲームです。
-ゲーム制作、サムネイル制作、テキスト制作はろカス（@mhks_dora）です。
+制作はろカス（@mhks_dora）です。
             
 ご感想や、最初にたどり着いたエンディングなどを教えていただけるととても嬉しいです。
 マシュマロのリンクはこのページ下部にあります。
 今後のモチベーションになりますので切実にお願いします。 
             
-ジクランのランスロットさんはとにかくいじらしくて可愛いのがすきなので少しでも伝わるといいなと思いました。
+ジクランのランスロットさんはとにかくいじらしくて可愛いのがすきので少しでも伝わるといいなと思いました。
             
 黒竜騎士団の時系列にしてしまうとその後王殺し事件が起きることが確定するため、正直悩みました。
 現在の時系列のゲームも作ろうと思いますが、イメージがかたまっていません…。もしよろしければお題や見たいシチュエーションなどを教えてください。
@@ -154,6 +157,12 @@
             <p>・<b>PANIC</b><br>右上のゲージ。 <br>ランスロットの焦燥を表します。<br>高まるとランスロットがパニックになり、<br>心臓の音が響き、選択肢が浮遊し始めます。<br>※さらにパニックが高まると、制限時間が発生します。</p>
         </div>
         <button class="system-btn" style="align-self: center;" onclick="initGame()">START</button>
+    </div>
+
+    <div id="epilogue-screen" class="screen" style="display:none;">
+        <h2 id="epilogue-title" style="font-weight: 300; color: var(--gold-sub); align-self: center; letter-spacing: 0.2rem; text-align: center;"></h2>
+        <div class="prologue-text" id="epilogue-content"></div>
+        <button class="system-btn" id="epilogue-next-btn" style="align-self: center;" onclick="advanceEpilogue()">NEXT</button>
     </div>
 
     <div id="timer-container"><div id="timer-bar"></div></div>
@@ -266,7 +275,7 @@
     }
 
 
-    const PROLOGUE_TEXT = `ある日、黒竜騎士団に舞い込んだ一件の魔物討伐依頼。\nたまたま近くに遠征中だったジークフリートとランスロットの手により、討伐は一瞬で完了した。だが、死の間際に魔物が放った呪いが、あろうことかランスロットに直撃してしまう！\n\nその呪いは「理性の消失」。\n本能のままに生きてしまうという恐ろしいもので、破壊衝動や深い恨みを持つ者にかかれば、またたく間に国ひとつを滅ぼしかねない。\n\nしかし、騎士団の誰もがランスロットなら大丈夫だろうと高をくくっていた。\nなぜなら、ランスロットは善性と正義感の塊。心優しい彼の本能がむき出しになったところで、せいぜい小鳥にエサをやり続ける程度だろう。\n\n解呪師の到着は明日の朝。ランスロットはジークフリートと共に、2人きりで野営の見張りをすることになった。\n\n……そう、誰も心配などしていなかったのだ。ランスロット本人を除いては。\n\nランスロットはジークフリートを心から尊敬し、いつもキラキラとした憧れの眼差しを向けている。____黒竜騎士団員周知の事実だ。\nしかし、実のところその想いは憧れの域をとうに超えていた。\n何を隠そう、ランスロットはジークフリートのことが大好きなのだ！\n\n普段は鋼の理性で抑え込んでいる淡くて強い恋心が、今解き放たれようとしている。 \n果たしてランスロットは、理性を守り抜き、平穏な朝を迎えることができるのか…！ \n\nプレイヤーのあなたは、いつもよりも大胆なランスロットの言動をコントロールし、彼らをハッピーエンドに導いてください！\n大胆な言動を取りすぎるとランスロットがパニックになり、ジークフリートさんも心配してしまいます。\n\n【ネタバレ】\n実はジークフリートさんもランスロットのことが大好きなのでどうやってもハッピーエンドにしかなりません。 \n安心してお好きな選択肢を選んでください！`;
+    const PROLOGUE_TEXT = `ある日、黒竜騎士団に舞い込んだ一件の魔物討伐依頼。\nたまたま近くに遠征中だったジークフリートとランスロットの手により、討伐は一瞬で完了した。だが、死の間際に魔物が放った呪いが、あろうことかランスロットに直撃してしまう！\n\nその呪いは「理性の消失」。\n本能のままに生きてしまうという恐ろしいもので、破壊衝動や深い恨みを持つ者にかかれば、またたく間に国ひとつを滅ぼしかねない。\n\nしかし、騎士団の誰もがランスロットなら大丈夫だろうと高をくくっていた。\nなぜなら、ランスロットは善性と正義感の塊。心優しい彼の本能がむき出しになったところで、せいぜい小鳥にエサをやり続ける程度のことしかしないだろう。\n\n解呪師の到着は明日の朝。ランスロットはジークフリートと共に、2人きりで野営の見張りをすることになった。\n\n……そう、誰も心配などしていなかったのだ。ランスロット本人を除いては。\n\nランスロットはジークフリートを心から尊敬し、いつもキラキラとした憧れの眼差しを向けている。____黒竜騎士団員周知の事実だ。\nしかし、実のところその想いは憧れの域をとうに超えていた。\n何を隠そう、ランスロットはジークフリートのことが大好きなのだ！\n\n普段は鋼の理性で抑え込んでいる淡くて強い恋心が、今解き放たれようとしている。 \n果たしてランスロットは、理性を守り抜き、平穏な朝を迎えることができるのか…！ \n\nプレイヤーのあなたは、いつもよりも大胆なランスロットの言動をコントロールし、彼らをハッピーエンドに導いてください！\n大胆な言動を取りすぎるとランスロットがパニックになり、ジークフリートさんも心配してしまいます。\n\n【ネタバレ】\n実はジークフリートさんもランスロットのことが大好きなのでどうやってもハッピーエンドにししかありません。 \n安心してお好きな選択肢を選んでください！`;
     const URA_PROLOGUE_TEXT = `ある日、黒竜騎士団に舞い込んだ一件の魔物討伐依頼。\n討伐自体はすぐに終わったが、死の間際に魔物が放った呪いに、俺は気づくことができなかった。小さな悲鳴に驚いて振り向くと、呪いはあろうことかランスロットに直撃していた。\n\nその呪いは「理性の消失」。\n本能のままに生きてしまうという恐ろしいものだが、ランスロットならば大丈夫だろうと、ひとまず安心する。\nなぜなら、ランスロットは善性と正義感の塊。心優しい彼の本能がむき出しになったところで、せいぜい道端のゴミを全部拾いはじめるくらいだろう。\n\n解呪師の到着は明日の朝。俺はランスロットと共に、2人きりで野営の見張りをすることになった。\n\n最近は騎士団も忙しく、久しぶりに一緒の時間を過ごせると、胸を弾ませる。\n\nランスロットは俺を心から尊敬し、いつもキラキラとした憧れの眼差しを向けてくる。\nしかし俺は、ランスロットのことをただの弟子として可愛く思っているのではない。…何を隠そう、俺はランスロットを愛しているのだ。\n\nせっかくだ、2人きりの時間を楽しもうではないか。\nなぜか少しそわそわしているランスロットの隣に座り、俺は薪をくべ始めた。\n\nプレイヤーのあなたは、炎の大きさをコントロールして、2人の夜を見守ってください。\n炎が小さくなるほど、夜の闇に紛れてランスロットが大胆になります。\n\n【ネタバレ】\n実はランスロットもジークフリートさんのことが大好きなのでどうやってもハッピーエンドにしかなりません。\n薪をくべながら推しカプを眺めるだけのモードです。`;
 
     const sData = [
@@ -298,7 +307,7 @@
             "ジークフリート", 
             "（ふと、優しいまなざしでランスロットを見つめる。火の影が彼の瞳を揺らしている）", 
             [
-                ["その瞳をじっと見つめ返す", 15, 15],
+                ["マップの瞳をじっと見つめ返す", 15, 15],
                 ["どうしましたかと首を傾げる", 10, 5],
                 ["恥ずかしくなって目を逸らす", 5, 10],
                 ["顔に何かついていますかと尋ねる", 0, 0]
@@ -376,7 +385,7 @@
         ],
         [
             "ジークフリート", 
-            "「……ランスロット、眠いなら寝るといい。 肩を貸すぞ。俺が見張りをする」", 
+            "「……ランスロット、眠いなら寝るといい。 肩を借すぞ。俺が見張りをする」", 
             [
                 ["「……じゃあ、お言葉に甘えて」と、そっと肩に頭を預ける", 10, 10],
                 ["「起きて…、あなたとこうしてお話していたいです。」", 5, 5],
@@ -545,7 +554,7 @@
         [
             "URA_CLINGY", 
             "愛しているから大丈夫", 
-            "パニックになったランスロットが、必死に俺を求めている。普段の真面目な姿を知っているからこそ、あまりにいじらしく思えた。頭を撫でて静かに愛を伝えると、少しの間を置いて小さな嗚咽が聞こえてきた。「俺だってあなたのことを愛しています。」途切れ途切れになりながらも一生懸命伝えてくれる。少し過呼吸気味になっているな。心配そうに見つめると、ふと顔を上げたランスロットがおもむろに目を伏せる。俺は吸い寄せられるように、初めてのキスをした。", 
+            "パニックになったランスロットが、必死に俺を求めている。普段の真面目な姿を知っているからこそ、あまりにいじらしく思えた。頭を撫でて静かに愛を伝えると、少しの間を置いて小さな嗚咽が聞こえてきた。「俺だってあなたのことを愛しています。」途切れ途切れになりながらも一生鍵命伝えてくれる。少し過呼吸気味になっているな。心配そうに見つめると、ふと顔を上げたランスロットがおもむろに目を伏せる。俺は吸い寄せられるように、初めてのキスをした。", 
             "薪をくべず暗闇を保てば、ランスロットは混乱し呪いの影響を強く受けるでしょう。"
         ]
     ]);
@@ -553,8 +562,24 @@
     let step = 0, love = 0, anxiety = 0, isWaiting = false, driftIntervals = [];
     const STORAGE_KEY = "zig_v25_audio_extreme", STORAGE_KEY_KEYS = "zig_v25_keys";
     let collectedEnds = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+    
+    collectedEnds = [...new Set(collectedEnds)];
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(collectedEnds));
+
     let keys = parseInt(localStorage.getItem(STORAGE_KEY_KEYS) || "0", 10);
     let isUraMode = false, isWaitingUra = false, fireSize = 100, uraFireInterval = null;
+
+    let epilogueStep = 0;
+    const epilogueTexts = [
+        { 
+            title: "EPILOGUE　side Lancelot", 
+            text: "朝になり、解呪師によって無事呪いが解けた。\n理性を取り戻した瞬間に、昨晩自分が犯した大胆な言動のすべてが脳裏に蘇り、頭が沸騰しそうになる。鏡を見なくても、自分の顔が熱を持ち真っ赤になっているのがわかる。あんなにジークフリートさんにベタベタと縋り付いて、俺は、俺は……！ とても思い出したくないくらいみっともないことを口走ってしまった、どうしよう！呆れられたに違いない。\n俺は絶望に打ちひしがれ、わざと彼から距離を置いて片付けを始める。\n…ふと、脳裏に昨夜の思い出がよぎる。とても甘い時間だった。大好きなジークフリートさんが、大きな手で俺の髪の毛や頬を撫でて、そして…。\nそこまで思い出してから、俺は煩悩を振り払うように、大きく頭を振った。ジークフリートさんが優しくしてくださったのも、きっと呪いにかかった哀れなへ弟子への同情なのだ。あんなのは、ただの夢だ…。\n" 
+        },
+        { 
+            title: "EPILOGUE side Siegfried", 
+            text: "王都に帰着してすぐ、ランスロットが執務室を訪ねてきた。「あの、ジークフリートさん！ 昨晩のことは、その、すべて呪いのせいでして……！ご迷惑をおかけして申し訳ございません…！」\n真っ赤な顔で必死に言い訳をするランスロットを前に、俺は口角が上がるのを止められない。\n朝起きた瞬間からあからさまに目を合わせず、ぎこちなく片付けをする彼を見て、彼が昨晩の事を恥じているのはすぐにわかった。ランスロットの気持ちを知った今、そんな姿すらも震えるほど愛おしい。\n俺は怯える彼の手首をそっと掴み、逃げられないように引き寄せる。\n「…ランスロット。俺は、呪いにかかっていないぞ」\n驚愕に目を見開く彼の耳元で、俺は笑いながら囁いた。\n「…ずっと前から、俺はお前を愛している。お前が呪いのせいにしようとも、俺は絶対に昨晩の続きを諦める気はないからな」\n" 
+        }
+    ];
 
     function showCustomModal(msg, buttons) {
         $('custom-modal-text').innerHTML = msg.replace(/\n/g, '<br>');
@@ -579,7 +604,12 @@
         hideCustomModal();
         keys--; localStorage.setItem(STORAGE_KEY_KEYS, keys);
         const wasNormal = ["TRUE", "HAPPY", "NORMAL", "BAD", "CLINGY"].every(eid => collectedEnds.includes(eid));
-        collectedEnds.push(id); localStorage.setItem(STORAGE_KEY, JSON.stringify(collectedEnds));
+        
+        if (!collectedEnds.includes(id)) {
+            collectedEnds.push(id); 
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(collectedEnds));
+        }
+
         const badge = $('sb-' + id); if (badge) badge.classList.add('active');
         $('key-count').innerText = keys;
         const justCompletedNormal = !wasNormal && ["TRUE", "HAPPY", "NORMAL", "BAD", "CLINGY"].every(eid => collectedEnds.includes(eid));
@@ -791,7 +821,6 @@
             }
         }
         const res = AE[resId];
-        // ----------------------------------------------------------------
         
         const wasNormal = ["TRUE", "HAPPY", "NORMAL", "BAD", "CLINGY"].every(id => collectedEnds.includes(id));
         let earnedKey = false;
@@ -803,7 +832,7 @@
     }
     function showResultScreen(res, isReplay, earnedKey = false, justCompletedNormal = false) {
         clearTimer(); if(uraFireInterval) { clearInterval(uraFireInterval); uraFireInterval = null; }
-        ['hud','msg-window','choice-container','ura-feed-btn','stage','panic-overlay','ura-dark-overlay'].forEach(hide);
+        ['hud','msg-window','choice-container','ura-feed-btn','stage','panic-overlay','ura-dark-overlay','epilogue-screen'].forEach(hide);
         show('result-screen', 'flex');
         $('end-title').innerText = res.title; $('end-desc').innerText = res.desc;
         const hintEl = $('end-hint');
@@ -827,12 +856,49 @@
         }
     }
 
+
+    function startEpilogue() {
+        initAudioContext(); hide('start-screen'); epilogueStep = 0; show('epilogue-screen', 'flex'); updateEpilogue();
+    }
+    function updateEpilogue() {
+        const data = epilogueTexts[epilogueStep];
+        $('epilogue-title').innerText = data.title;
+        $('epilogue-content').innerText = data.text;
+        const nextBtn = $('epilogue-next-btn');
+        nextBtn.style.display = 'none';
+        const content = $('epilogue-content');
+        content.scrollTop = 0;
+        content.onscroll = () => {
+            if (content.scrollTop + content.clientHeight >= content.scrollHeight - 10) { nextBtn.style.display = 'flex'; }
+        };
+        setTimeout(() => {
+            if (content.scrollHeight <= content.clientHeight) nextBtn.style.display = 'flex';
+        }, 100);
+    }
+    function advanceEpilogue() {
+        playClickSound(); epilogueStep++;
+        if (epilogueStep < epilogueTexts.length) { updateEpilogue(); } 
+        else { location.reload(); }
+    }
+
     window.onload = () => { 
         collectedEnds.forEach(id => { const b = $('sb-' + id); if (b) b.classList.add('active'); });
+        
+
         if (["TRUE", "HAPPY", "NORMAL", "BAD", "CLINGY"].every(id => collectedEnds.includes(id))) {
             $('start-screen').classList.add('dark-mode'); $('sub-title').innerHTML = "裏モードが解放されました。";
             show('ura-start-btn', 'flex'); show('ura-badges', 'flex');
         }
+
+       
+        const allEndIds = ["TRUE", "HAPPY", "NORMAL", "BAD", "CLINGY", "URA_TRUE", "URA_HAPPY", "URA_NORMAL", "URA_BAD", "URA_CLINGY"];
+        if (allEndIds.every(id => collectedEnds.includes(id))) {
+            $('start-screen').classList.remove('dark-mode');
+            $('start-screen').classList.add('all-clear'); 
+            $('sub-title').innerHTML = "夜が明け、2人に朝日が降り注ぐ… ";
+            show('epilogue-start-btn', 'flex'); 
+        }
+        
         $('key-count').innerText = keys;
     };
 </script>
